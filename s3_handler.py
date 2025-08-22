@@ -1,73 +1,60 @@
-from __future__ import annotations
 import boto3
-from botocore.exceptions import ClientError, NoCredentialsError
-from utils import get_common_tags, tags_list_to_dict, CREATED_BY_KEY, CREATED_BY_VAL
+import json
+from utils import get_common_tags
 
-def _s3_client(session: boto3.Session, region: str | None):
-    # region for bucket operations
-    return session.client("s3", region_name=region)
+def get_s3_client(profile=None, region=None):
+    session = boto3.Session(profile_name=profile, region_name=region)
+    return session.client("s3")
 
-def create_bucket(session: boto3.Session, name: str, region: str | None, public: bool, confirm: str | None, owner: str | None):
-    s3 = _s3_client(session, region)
-    if public and confirm != "yes":
-        raise RuntimeError("Public bucket requires explicit confirmation: pass --confirm yes")
+def create_bucket(bucket_name, public=False, owner=None, profile=None, region=None):
+    s3 = get_s3_client(profile, region)
+    tags = get_common_tags(owner)
 
-    create_args = {"Bucket": name}
-    # In us-east-1, do not set LocationConstraint
+    create_params = {"Bucket": bucket_name}
+
     if region and region != "us-east-1":
-        create_args["CreateBucketConfiguration"] = {"LocationConstraint": region}
+        create_params["CreateBucketConfiguration"] = {"LocationConstraint": region}
 
-    s3.create_bucket(**create_args)
-
-    # Tag bucket
-    s3.put_bucket_tagging(Bucket=name, Tagging={"TagSet": get_common_tags(owner)})
-
-    # Block public access by default
-    if not public:
-        s3.put_public_access_block(
-            Bucket=name,
-            PublicAccessBlockConfiguration={
-                "BlockPublicAcls": True,
-                "IgnorePublicAcls": True,
-                "BlockPublicPolicy": True,
-                "RestrictPublicBuckets": True,
-            },
-        )
-    else:
-        # If public is requested, ensure public access block is removed
-        try:
-            s3.delete_public_access_block(Bucket=name)
-        except ClientError:
-            pass  # if not set, ignore
-    return {"Bucket": name, "Public": public}
-
-def _bucket_has_cli_tag(s3, bucket: str) -> bool:
     try:
-        tags = s3.get_bucket_tagging(Bucket=bucket)["TagSet"]
-    except ClientError as e:
-        # If no tags found, or access denied
-        raise PermissionError(f"Cannot read tags for bucket '{bucket}': {e}")
-    t = tags_list_to_dict(tags)
-    return t.get(CREATED_BY_KEY) == CREATED_BY_VAL
+        s3.create_bucket(**create_params)
 
-def upload_file(session: boto3.Session, region: str | None, bucket: str, key: str, file_path: str):
-    s3 = _s3_client(session, region)
-    if not _bucket_has_cli_tag(s3, bucket):
-        raise PermissionError("Upload allowed only to CLI-created buckets")
-    s3.upload_file(file_path, bucket, key)
-    return {"Bucket": bucket, "Key": key, "Status": "uploaded"}
+        s3.put_bucket_tagging(
+            Bucket=bucket_name,
+            Tagging={"TagSet": tags}
+        )
 
-def list_buckets(session: boto3.Session):
-    s3 = _s3_client(session, None)
-    resp = s3.list_buckets()
-    out = []
-    for b in resp.get("Buckets", []):
-        name = b["Name"]
-        try:
-            tags = s3.get_bucket_tagging(Bucket=name)["TagSet"]
-            if tags_list_to_dict(tags).get(CREATED_BY_KEY) == CREATED_BY_VAL:
-                out.append({"Name": name})
-        except ClientError:
-            # Skip buckets we can't tag-read
-            continue
-    return out
+        if public:
+            s3.put_bucket_acl(Bucket=bucket_name, ACL="public-read")
+
+        print(f" Created bucket {bucket_name} in {region or 'default region'}")
+
+    except Exception as e:
+        print(json.dumps({"ok": False, "result": {"error": str(e)}}, indent=2))
+
+def upload_file(bucket_name, file_path, profile=None, region=None):
+    s3 = get_s3_client(profile, region)
+    try:
+        s3.upload_file(file_path, bucket_name, file_path.split("/")[-1])
+        print(f" Uploaded {file_path} to {bucket_name}")
+    except Exception as e:
+        print(json.dumps({"ok": False, "result": {"error": str(e)}}, indent=2))
+
+def list_buckets(profile=None, region=None):
+    s3 = get_s3_client(profile, region)
+    try:
+        resp = s3.list_buckets()
+        buckets = []
+        for b in resp.get("Buckets", []):
+            tags = []
+            try:
+                tagset = s3.get_bucket_tagging(Bucket=b["Name"])["TagSet"]
+                tags = {t["Key"]: t["Value"] for t in tagset}
+            except:
+                continue
+
+            if tags.get("CreatedBy") == "platform-cli":
+                buckets.append({"Name": b["Name"], "Tags": tags})
+
+        print(json.dumps(buckets, indent=2))
+    except Exception as e:
+        print(json.dumps({"ok": False, "result": {"error": str(e)}}, indent=2))
