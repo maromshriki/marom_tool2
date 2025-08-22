@@ -1,9 +1,9 @@
-מעולה 🙌 הנה גרסה מלאה של README.md שתוכל לשים בריפו שלך, עם הוראות התקנה ושימוש צעד-אחר-צעד (כולל aws configure):
 
-# marom_tool – AWS CLI Tool
+
+marom_tool – AWS CLI Tool
 
 כלי CLI לניהול משאבי AWS (EC2, S3, Route53) עם מגבלות ותקני אבטחה.  
-הכלי נבנה באמצעות `boto3` ומאפשר יצירה, ניהול ורשימה של משאבים, תוך שימוש בתגיות לזיהוי (CreatedBy=platform-cli, Owner=<username>).
+הכלי נבנה באמצעות `boto3` ומאפשר יצירה, ניהול ורשימה של משאבים
 
 ---
 
@@ -11,7 +11,7 @@
 1. Python 3.9+
 2. חשבון AWS עם הרשאות מתאימות (EC2, S3, Route53).
 3. התקנת AWS CLI:  
-   ```bash
+   
    pip install awscli
 
 
@@ -36,10 +36,7 @@ Default output format (למשל: json)
 git clone https://github.com/maromshriki/marom_tool.git
 cd marom_tool
 
-python3 -m venv .venv
-source .venv/bin/activate
-
-pip install -r requirements.txt
+run ./marom.sh
 
 שימוש
 
@@ -51,7 +48,8 @@ EC2
 
 יצירת אינסטנס (רק t3.micro או t2.small, עם מגבלה של 2 אינסטנסים):
 
-python maromtool.py ec2 create --type t3.micro --os ubuntu
+python3.11 maromtool.py ec2 create --type t3.micro --os amazon-linux
+
 
 
 עצירת אינסטנס (רק אינסטנסים מתויגים ע"י ה־CLI):
