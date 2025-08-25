@@ -8,11 +8,10 @@ marom_tool – AWS CLI Tool
 ---
 
 ## דרישות מקדימות
-1. Python 3.9+
 2. חשבון AWS עם הרשאות מתאימות (EC2, S3, Route53).
-3. התקנת AWS CLI:  
-   
-   pip install awscli
+3. התקנת AWS CLI:
+   התקנת פייתון
+pip install awscli
 
 
 הגדרת פרטי ההתחברות שלך פעם אחת:
