@@ -32,8 +32,8 @@ Default output format (למשל: json)
 ההגדרות נשמרות תחת ~/.aws/credentials ו־~/.aws/config.
 
 התקנה
-git clone https://github.com/maromshriki/marom_tool.git
-cd marom_tool
+git clone https://github.com/maromshriki/marom_tool2.git
+cd marom_tool2
 
 run ./marom.sh
 
